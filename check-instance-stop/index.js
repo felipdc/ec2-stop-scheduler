@@ -1,20 +1,23 @@
-const AWS = require("aws-sdk")
-const ec2 = new AWS.EC2()
+const AWS = require("aws-sdk");
+const ec2 = new AWS.EC2();
 
 exports.handler = async (event) => {
     let dat;
-    let instanceIdsToStop
+    let instanceIdsToStop;
     
     await ec2.describeInstances({ }, function(err, data) {
-        if (err) dat=err
-        else     dat=data
+        if (err) dat=err; // an error occurred
+        else     dat=data;           // successful response
     }).promise();
+
     
-    instanceIdsToStop = dat.Reservations[0].Instances.map((instance) => {
+    
+    instanceIdsToStop = dat.Reservations.map((reservation) => {
+        let instance = reservation.Instances[0]
         if (instance.State.Name !== "running") return null
-        let tags = instance.Tags
+        let tags = instance.Tags;
         let tagOfInstanceToStop = tags.find((tag) => tag.Key == "StopTime")
-        let dateNow = new Date()
+        let dateNow = new Date();
         let dateToStop = new Date(tagOfInstanceToStop.Value);
         if (dateNow > dateToStop) {
             return instance.InstanceId
@@ -24,8 +27,9 @@ exports.handler = async (event) => {
     })
     
     instanceIdsToStop = instanceIdsToStop.filter(function (el) {
-        return el != null
+        return el != null;
     });
+
 
     if (instanceIdsToStop.length > 0) {
         let response;
@@ -43,7 +47,7 @@ exports.handler = async (event) => {
             }
         }).promise()
         
-        return response
+        return response;
     }
     
     return "No instances to stop"
